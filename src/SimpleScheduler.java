@@ -12,4 +12,23 @@ class SimpleScheduler extends AbstractScheduler {
         return null;
     }
 
+    @Override
+    protected Schedule reschedule(int initiationInterval) {
+        return null;
+    }
+
+    @Override
+    public void scheduleBasicBlockZero() {
+    }
+
+    @Override
+    public void scheduleBasicBlockOne() {
+
+    }
+
+    @Override
+    public void scheduleBasicBlockTwo() {
+
+    }
+
 }

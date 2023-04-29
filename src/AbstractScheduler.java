@@ -1,12 +1,14 @@
 package src;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
-import src.instructions.DecodedInstruction;
+import src.instructions.AbstractInstruction;
+import src.instructions.MovPredicate;
 
 abstract class AbstractScheduler {
     Schedule schedule;
-    private ArrayList<DecodedInstruction> program;
+    private HashMap<Integer, AbstractInstruction> originalProgram;
     DependencyTable dependencyTable;
     int initiationInterval, loopStart, loopEnd;
 
@@ -32,16 +34,24 @@ abstract class AbstractScheduler {
     public abstract void scheduleBasicBlockTwo();
 
     public AbstractScheduler(DecodedProgram program, DependencyTable dependencyTable) {
-        this.program = program.getProgram();
+        this.originalProgram = new HashMap<>();
         this.dependencyTable = dependencyTable;
         this.initiationInterval = program.optimalInitiationInterval();
         this.loopStart = program.getLoopStart();
         this.loopEnd = program.getLoopEnd();
         this.schedule = new Schedule();
+
+        for (AbstractInstruction instr : program.getProgram()) {
+            originalProgram.put(instr.getId(), instr);
+        }
     }
 
-    protected boolean checkInterloopDependency(DecodedInstruction instr, Bundle bundle1, Bundle bundle2) {
+    protected boolean checkInterloopDependency(AbstractInstruction instr, Bundle bundle1, Bundle bundle2) {
         return bundle1.getAddress() + instr.getLatency() <= bundle2.getAddress() + initiationInterval;
+    }
+
+    protected MovPredicate createPredicateInstruction(int reg, boolean value) {
+        return new MovPredicate(-1, "mov", reg, value);
     }
 
 }

@@ -17,11 +17,13 @@ class Main {
         DependencyTable dependencyTable;
 
         decodedProgram = new DecodedProgram(IO.read(args[0]));
-        dependencyTable = new DependencyTable(decodedProgram);
-
         System.out.printf("%s", decodedProgram);
 
+        dependencyTable = new DependencyTable(decodedProgram);
+        System.out.printf("%s", dependencyTable);
+
         IO.write(new SimpleScheduler(decodedProgram, dependencyTable).schedule(), args[1]);
+        DecodedProgram.transformToPipelined(decodedProgram);
         IO.write(new PipelinedScheduler(decodedProgram, dependencyTable).schedule(), args[2]);
     }
 }

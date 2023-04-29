@@ -6,11 +6,11 @@ import src.instructions.*;
 
 class Bundle {
 
-    private DecodedInstruction[] slots;
+    private AbstractInstruction[] slots;
     private int address;
 
     public Bundle(int address) {
-        slots = new DecodedInstruction[5];
+        slots = new AbstractInstruction[5];
         Arrays.fill(slots, null);
         this.address = address;
     }
@@ -19,8 +19,8 @@ class Bundle {
         return address;
     }
 
-    public boolean addInstruction(DecodedInstruction instr) {
-        if (instr instanceof Alu) {
+    public boolean addInstruction(AbstractInstruction instr) {
+        if (instr instanceof IInstructionAlu) {
             if (slots[0] == null) {
                 slots[0] = instr;
                 return true;
@@ -32,19 +32,19 @@ class Bundle {
             return false;
         }
 
-        else if (instr instanceof Mul) {
+        else if (instr instanceof AbstractInstructionMul) {
             if (slots[2] == null) {
                 slots[2] = instr;
                 return true;
             }
             return false;
-        } else if (instr instanceof Mem) {
+        } else if (instr instanceof IInstructionMem) {
             if (slots[3] == null) {
                 slots[3] = instr;
                 return true;
             }
             return false;
-        } else if (instr instanceof Branch) {
+        } else if (instr instanceof AbstractInstructionBranch) {
             if (slots[4] == null) {
                 slots[4] = instr;
                 return true;

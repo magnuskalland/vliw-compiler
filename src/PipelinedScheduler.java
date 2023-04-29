@@ -1,6 +1,6 @@
 package src;
 
-import src.instructions.DecodedInstruction;
+import src.instructions.*;
 
 class PipelinedScheduler extends AbstractScheduler {
     static final int NON_ROTATING_REG_START = 1;
@@ -16,9 +16,33 @@ class PipelinedScheduler extends AbstractScheduler {
         return null;
     }
 
-    class Reserved extends DecodedInstruction {
+    @Override
+    protected Schedule reschedule(int initiationInterval) {
+        return null;
+    }
+
+    @Override
+    public void scheduleBasicBlockZero() {
+    }
+
+    @Override
+    public void scheduleBasicBlockOne() {
+
+    }
+
+    @Override
+    public void scheduleBasicBlockTwo() {
+
+    }
+
+    private int rrbShiftCount(AbstractProducer consumer,
+            AbstractProducer producer) {
+        return producer.getDestination() + (consumer.getStage() - producer.getStage());
+    }
+
+    private class Reserved extends AbstractInstruction {
         public Reserved() {
-            super("reserved");
+            super(-1, "reserved");
         }
 
         @Override
