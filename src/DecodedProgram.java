@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import src.instructions.*;
 
 class DecodedProgram {
-    private int loopStart = -1, loopEnd = -1;
+    private int loopStart = 0, loopEnd = 0;
     private int optimalInitiationInterval;
     private ArrayList<AbstractInstruction> decodedProgram;
 
@@ -29,7 +29,7 @@ class DecodedProgram {
             if (instr instanceof Loop) {
                 program.getProgram().set(i,
                         new Looppip(instr.getId(),
-                                instr.getMnemonic(),
+                                "loop.pip",
                                 ((AbstractInstructionBranch) instr).getLabel()));
             }
         }

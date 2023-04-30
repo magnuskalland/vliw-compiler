@@ -12,6 +12,10 @@ public abstract class AbstractInstructionBranch extends AbstractInstruction {
         return label;
     }
 
+    public void setLabel(int label) {
+        this.label = label;
+    }
+
     @Override
     public String toString() {
         return String.format("%s %s %s", predicateToString(), mnemonic, label);

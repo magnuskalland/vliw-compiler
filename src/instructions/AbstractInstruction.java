@@ -1,13 +1,14 @@
 package src.instructions;
 
 public abstract class AbstractInstruction {
-    protected int id;
+    protected int id, scheduledAddress;
     protected String mnemonic;
     protected Predicate predicate = null;
     protected int stage = -1;
 
     public AbstractInstruction(int id, String mnemonic) {
         this.id = id;
+        this.scheduledAddress = id;
         this.mnemonic = mnemonic;
     }
 
@@ -29,6 +30,14 @@ public abstract class AbstractInstruction {
 
     public int getAddress() {
         return id;
+    }
+
+    public int getScheduledAddress() {
+        return scheduledAddress;
+    }
+
+    public void setScheduledAddress(int addr) {
+        scheduledAddress = addr;
     }
 
     public void setPredicate(int reg) {

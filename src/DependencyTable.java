@@ -1,7 +1,9 @@
 package src;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -13,10 +15,10 @@ import src.instructions.MovLoop;
 class DependencyTable {
     private ArrayList<AbstractInstruction> program;
     private int loopStart, loopEnd;
-    private ArrayList<Set<Integer>> localDependencies;
-    private ArrayList<Set<Integer>> interloopDependencies;
-    private ArrayList<Set<Integer>> loopInvariantDependencies;
-    private ArrayList<Set<Integer>> postLoopDependencies;
+    private ArrayList<Set<AbstractProducer>> localDependencies;
+    private ArrayList<Set<AbstractProducer>> interloopDependencies;
+    private ArrayList<Set<AbstractProducer>> loopInvariantDependencies;
+    private ArrayList<Set<AbstractProducer>> postLoopDependencies;
 
     public DependencyTable(DecodedProgram program) {
         this.program = program.getProgram();
@@ -34,6 +36,22 @@ class DependencyTable {
             detectInvariantDependencies();
             detectPostLoopDependencies();
         }
+    }
+
+    public ArrayList<Set<AbstractProducer>> getLocalDependencies() {
+        return localDependencies;
+    }
+
+    public ArrayList<Set<AbstractProducer>> getInterloopDependencies() {
+        return interloopDependencies;
+    }
+
+    public ArrayList<Set<AbstractProducer>> getLoopInvariantDependencies() {
+        return loopInvariantDependencies;
+    }
+
+    public ArrayList<Set<AbstractProducer>> getPostLoopDependencies() {
+        return postLoopDependencies;
     }
 
     private void detectLocalDependencies() {
@@ -64,7 +82,7 @@ class DependencyTable {
                 registerOperands = consumer.getReadRegisters();
                 for (int k = 0; k < registerOperands.length; k++) {
                     if (producer.getDestination() == registerOperands[k]) {
-                        localDependencies.get(i).add(registerOperands[k]);
+                        localDependencies.get(i).add(producer);
                     }
                 }
             }
@@ -72,54 +90,111 @@ class DependencyTable {
     }
 
     private void detectInterloopDependencies() {
-        int[] consumedRegisters;
-
+        Set<AbstractProducer> dependencies, preLoopDependencies = getProduced(0, loopStart);
         for (int i = loopStart; i < loopEnd + 1; i++) {
             if (!(program.get(i) instanceof IConsumer)) {
                 continue;
             }
-            consumedRegisters = ((IConsumer) program.get(i)).getReadRegisters();
-            addDependencies(interloopDependencies, i, consumedRegisters, getProduced(i, loopEnd + 1));
+            dependencies = getProduced(i, loopEnd + 1);
+            addDependencies(interloopDependencies, i, (IConsumer) program.get(i),
+                    addAllIfExists(dependencies, preLoopDependencies));
         }
     }
 
     private void detectInvariantDependencies() {
-        int[] consumedRegisters;
-        Set<Integer> uniquelyProducedRegisters = setDifference(getProduced(0, loopStart),
+        Set<AbstractProducer> unique = setDifference(
+                getProduced(0, loopStart),
                 getProduced(loopStart, loopEnd + 1));
 
         for (int i = loopStart; i < loopEnd + 1; i++) {
             if (!(program.get(i) instanceof IConsumer)) {
                 continue;
             }
-            consumedRegisters = ((IConsumer) program.get(i)).getReadRegisters();
-            addDependencies(loopInvariantDependencies, i, consumedRegisters, uniquelyProducedRegisters);
+            addDependencies(loopInvariantDependencies, i, (IConsumer) program.get(i), unique);
         }
     }
 
     private void detectPostLoopDependencies() {
-        int[] consumedRegisters;
         for (int i = loopEnd + 1; i < program.size(); i++) {
             if (!(program.get(i) instanceof IConsumer)) {
                 continue;
             }
-            consumedRegisters = ((IConsumer) program.get(i)).getReadRegisters();
-            addDependencies(
-                    postLoopDependencies, i, consumedRegisters, getProduced(loopStart,
-                            loopEnd + 1));
+            addDependencies(postLoopDependencies, i, (IConsumer) program.get(i), getProduced(loopStart, loopEnd + 1));
         }
+    }
+
+    private void addDependencies(ArrayList<Set<AbstractProducer>> dependencies, int index,
+            IConsumer consumer,
+            Set<AbstractProducer> producers) {
+        int[] consumedRegisters = consumer.getReadRegisters();
+        for (int i = 0; i < consumedRegisters.length; i++) {
+            for (AbstractProducer producer : producers) {
+                if (producer.getDestination() == consumedRegisters[i]) {
+                    dependencies.get(index).add(producer);
+                }
+            }
+        }
+    }
+
+    private Set<AbstractProducer> getProduced(int start, int end) {
+        Set<AbstractProducer> produced = new HashSet<>();
+        for (int i = start; i < end; i++) {
+            if (program.get(i) instanceof AbstractProducer) {
+                produced.add((AbstractProducer) program.get(i));
+            }
+        }
+        return produced;
+    }
+
+    private Set<AbstractProducer> setDifference(Set<AbstractProducer> set1,
+            Set<AbstractProducer> set2) {
+        Set<AbstractProducer> output = new HashSet<>();
+        boolean overlap;
+        for (AbstractProducer d1 : set1) {
+            overlap = false;
+            for (AbstractProducer d2 : set2) {
+                if (d1.getDestination() == d2.getDestination()) {
+                    overlap = true;
+                    break;
+                }
+            }
+            if (!overlap) {
+                output.add(d1);
+            }
+        }
+        return output;
+    }
+
+    private Set<AbstractProducer> addAllIfExists(Set<AbstractProducer> base, Set<AbstractProducer> extra) {
+        Set<AbstractProducer> output = new HashSet<>(base);
+        for (AbstractProducer d1 : base) {
+            for (AbstractProducer d2 : extra) {
+                if (d1.getDestination() == d2.getDestination()) {
+                    output.add(d2);
+                }
+            }
+        }
+        return output;
+    }
+
+    private ArrayList<Set<AbstractProducer>> freshArrayList() {
+        ArrayList<Set<AbstractProducer>> array = new ArrayList<>();
+        for (int i = 0; i < program.size(); i++) {
+            array.add(new HashSet<AbstractProducer>());
+        }
+        return array;
     }
 
     @Override
     public String toString() {
-        int width = 65;
+        int width = 81;
         StringBuilder sb = new StringBuilder();
         AbstractInstruction instr;
 
         /* preamble */
         sb.append(new String(new char[width]).replace("\0", "-"));
         sb.append("\n");
-        sb.append("| id | instr | dest | local | interloop | invariant | post loop |");
+        sb.append("| id | instr | dest |   local   |   interloop   |   invariant   |   post loop   |");
         sb.append("\n");
         sb.append(new String(new char[width]).replace("\0", "-"));
         sb.append("\n");
@@ -130,13 +205,14 @@ class DependencyTable {
             String line;
 
             if (instr instanceof MovLoop) {
-                line = String.format("| %2s | %5s | %-4s |       |           |           |           |",
+                line = String.format(
+                        "| %2s | %5s | %-3s |           |               |               |               |",
                         instr.getAddress(), instr.getMnemonic(),
                         ((MovLoop) instr).getDest());
             }
 
             else if (!(instr instanceof AbstractProducer)) {
-                line = String.format("| %2s | %5s |      | %-5s | %-9s | %-9s | %-9s |",
+                line = String.format("| %2s | %5s |      | %-9s | %-13s | %-13s | %-13s |",
                         instr.getAddress(), instr.getMnemonic(),
                         getDependencyAsString(localDependencies.get(i)),
                         getDependencyAsString(interloopDependencies.get(i)),
@@ -145,7 +221,7 @@ class DependencyTable {
             }
 
             else {
-                line = String.format("| %2d | %5s | %-4s | %-5s | %-9s | %-9s | %-9s |",
+                line = String.format("| %2d | %5s | x%-3s | %-9s | %-13s | %-13s | %-13s |",
                         instr.getAddress(), instr.getMnemonic(),
                         ((AbstractProducer) instr).getDestination(),
                         getDependencyAsString(localDependencies.get(i)),
@@ -163,53 +239,43 @@ class DependencyTable {
         return sb.toString();
     }
 
-    private void addDependencies(ArrayList<Set<Integer>> dependencies, int index, int[] consumedRegisters,
-            Set<Integer> producedRegisters) {
-        for (int i = 0; i < consumedRegisters.length; i++) {
-            if (producedRegisters.contains(consumedRegisters[i])) {
-                dependencies.get(index).add(consumedRegisters[i]);
-            }
+    private String getDependencyAsString(Set<AbstractProducer> dependencies) {
+        if (dependencies.isEmpty()) {
+            return "";
         }
-    }
 
-    private Set<Integer> getProduced(int start, int end) {
-        Set<Integer> produced = new HashSet<>();
-        for (int i = start; i < end; i++) {
-            if (program.get(i) instanceof AbstractProducer) {
-                produced.add(((AbstractProducer) program.get(i)).getDestination());
-            }
-        }
-        return produced;
-    }
-
-    private Set<Integer> setDifference(Set<Integer> set1, Set<Integer> set2) {
-        Set<Integer> output = new HashSet<>();
-        for (Integer i : set1) {
-            if (!(set2.contains(i))) {
-                output.add(i);
-            }
-        }
-        return output;
-    }
-
-    private ArrayList<Set<Integer>> freshArrayList() {
-        ArrayList<Set<Integer>> array = new ArrayList<>();
-        for (int i = 0; i < program.size(); i++) {
-            array.add(new HashSet<Integer>());
-        }
-        return array;
-    }
-
-    private String getDependencyAsString(Set<Integer> dependency) {
         StringBuilder sb = new StringBuilder();
-        if (!dependency.isEmpty()) {
-            sb.append("x");
+        Map<Integer, ArrayList<Integer>> mapping = new HashMap<>();
+
+        for (AbstractProducer producer : dependencies) {
+            if (mapping.containsKey(producer.getDestination())) {
+                mapping.get(producer.getDestination()).add(producer.getAddress());
+            }
+
+            else {
+                mapping.put(producer.getDestination(), new ArrayList<>());
+                mapping.get(producer.getDestination()).add(producer.getAddress());
+            }
         }
-        sb.append(dependency.stream().map(Object::toString).collect(Collectors.joining(", x")));
-        return sb.toString();
+
+        for (Integer register : mapping.keySet()) {
+            sb.append(String.format("x%d: ", register));
+            if (mapping.get(register).size() > 1) {
+                sb.append("(");
+                sb.append(mapping.get(register).stream().map(Object::toString).collect(Collectors.joining(" or ")));
+                sb.append("), ");
+            }
+
+            else {
+                sb.append(String.format("%d, ", mapping.get(register).get(0)));
+            }
+        }
+
+        return sb.toString().substring(0, sb.toString().length() - 2);
     }
 
     private boolean noLoop() {
         return loopStart == -1 && loopEnd == -1;
     }
+
 }

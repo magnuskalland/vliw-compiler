@@ -8,6 +8,10 @@ public abstract class AbstractProducer extends AbstractInstruction {
         this.dest = dest;
     }
 
+    public void setDestination(int dest) {
+        this.dest = dest;
+    }
+
     public int getDestination() {
         return dest;
     }
